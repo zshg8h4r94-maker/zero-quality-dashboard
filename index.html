@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Quality Dashboard — Trident Group</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1b2a; color: #e8edf2; min-height: 100vh; }
+
+  .topbar {
+    background: #0a1628;
+    border-bottom: 2px solid #d4840a;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .logo-box {
+    background: #d4840a;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 4px;
+    letter-spacing: .08em;
+  }
+  .title-block h1 { font-size: 16px; font-weight: 600; color: #e8edf2; }
+  .title-block p { font-size: 11px; color: #6b8aa8; margin-top: 1px; }
+  .topbar-right { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .meta-pill { font-size: 11px; color: #6b8aa8; background: #111d2b; padding: 4px 10px; border-radius: 99px; border: 1px solid #1e3a50; }
+  .badge-live { font-size: 10px; background: #0d4a1e; color: #4ade80; padding: 3px 8px; border-radius: 99px; border: 1px solid #166534; font-weight: 600; }
+
+  .nav-tabs { background: #0a1628; border-bottom: 1px solid #1e3a50; display: flex; padding: 0 24px; gap: 0; overflow-x: auto; }
+  .tab { font-size: 12px; padding: 10px 16px; color: #6b8aa8; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab:hover { color: #a8c4dc; }
+  .tab.active { color: #d4840a; border-bottom-color: #d4840a; font-weight: 600; }
+
+  .main { padding: 18px 24px; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi-card { background: #0a1628; border: 1px solid #1e3a50; border-radius: 6px; padding: 14px 16px; position: relative; overflow: hidden; }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .kpi-card.gold::before { background: #d4840a; }
+  .kpi-card.green::before { background: #22c55e; }
+  .kpi-card.blue::before { background: #5ab5f7; }
+  .kpi-card.red::before { background: #ef4444; }
+  .kpi-card.purple::before { background: #a78bfa; }
+  .kpi-label { font-size: 10px; color: #6b8aa8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .kpi-value.gold { color: #d4840a; }
+  .kpi-value.green { color: #22c55e; }
+  .kpi-value.blue { color: #5ab5f7; }
+  .kpi-value.red { color: #ef4444; }
+  .kpi-value.purple { color: #a78bfa; }
+  .kpi-sub { font-size: 11px; color: #6b8aa8; margin-top: 5px; }
+  .up { color: #22c55e; font-weight: 600; }
+  .down { color: #ef4444; font-weight: 600; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid-13 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  .panel { background: #0a1628; border: 1px solid #1e3a50; border-radius: 6px; padding: 16px; }
+  .panel-title { font-size: 12px; font-weight: 600; color: #d4840a; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; justify-content: space-between; }
+  .panel-title span { font-weight: 400; color: #6b8aa8; font-size: 11px; text-transform: none; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { background: #0d1b2a; color: #6b8aa8; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; text-align: left; border-bottom: 1px solid #1e3a50; }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid #0d1b2a; color: #c8d8e8; }
+  .data-table tr:hover td { background: #111d2b; }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .ph-pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .ph-ok { background: #0d4a1e; color: #4ade80; }
+  .ph-warn { background: #451a03; color: #fb923c; }
+  .ph-bad { background: #450a0a; color: #f87171; }
+
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+  .flow-step { background: #111d2b; border: 1px solid #1e3a50; border-radius: 4px; padding: 6px 10px; font-size: 10px; color: #a8c4dc; text-align: center; }
+  .flow-step.gold { background: #2a1800; border-color: #d4840a; color: #d4840a; font-weight: 600; }
+  .flow-step.prob { background: #2a0d0d; border-color: #ef4444; color: #ef4444; }
+  .flow-step.pass { background: #0d2a0d; border-color: #22c55e; color: #22c55e; }
+  .flow-arrow { color: #d4840a; font-size: 14px; padding: 0 2px; }
+
+  .finding-card { background: #0d1b2a; border-radius: 5px; padding: 12px; border-left: 3px solid #d4840a; margin-bottom: 10px; font-size: 12px; color: #a8c4dc; line-height: 1.65; }
+  .finding-title { font-weight: 600; margin-bottom: 5px; }
+
+  .abc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .abc-card { border-radius: 6px; padding: 14px; text-align: center; }
+  .abc-letter { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+  .abc-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .abc-body { font-size: 11px; line-height: 1.6; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #111d2b; font-size: 12px; }
+  .bar-row:last-child { border-bottom: none; }
+  .bar-label { min-width: 110px; color: #6b8aa8; font-size: 11px; }
+  .bar-bg { flex: 1; background: #111d2b; border-radius: 99px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 8px; border-radius: 99px; }
+  .bar-val { min-width: 45px; text-align: right; font-size: 11px; color: #a8c4dc; font-weight: 600; }
+
+  .legend { display: flex; gap: 16px; font-size: 11px; color: #6b8aa8; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  .hidden { display: none; }
+
+  .footer { border-top: 1px solid #1e3a50; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #3d5a70; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-box">TRIDENT GROUP</div>
+    <div class="title-block">
+      <h1>Zero Quality Analytics Dashboard — Finished Goods</h1>
+      <p>Process House &nbsp;|&nbsp; Dyeing Division, Budni &nbsp;|&nbsp; Analyst: Amritpal Singh &nbsp;|&nbsp; Guide: Mr. Naveen Kumar</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="meta-pill">13,300+ Workforce</span>
+    <span class="meta-pill">150+ Countries</span>
+    <span class="meta-pill">Jan – Jul 2024</span>
+    <span class="badge-live">&#9679; LIVE</span>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <div class="tab active" onclick="showTab('overview',this)">Overview</div>
+  <div class="tab" onclick="showTab('shade',this)">Shade Variation</div>
+  <div class="tab" onclick="showTab('equilibrium',this)">Equilibrium Study</div>
+  <div class="tab" onclick="showTab('hardness',this)">Roller Hardness</div>
+  <div class="tab" onclick="showTab('migration',this)">Dye Migration</div>
+  <div class="tab" onclick="showTab('leadcloth',this)">Lead Cloth</div>
+</div>
+
+<!-- ═══ OVERVIEW ═══ -->
+<div id="tab-overview" class="main">
+  <div class="kpi-row">
+    <div class="kpi-card gold">
+      <div class="kpi-label">Project Goal</div>
+      <div class="kpi-value gold">ZERO</div>
+      <div class="kpi-sub">Quality defects in finished goods</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Problems Identified</div>
+      <div class="kpi-value green">4</div>
+      <div class="kpi-sub">Root causes of shade variation</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">SOPs Created</div>
+      <div class="kpi-value blue">1</div>
+      <div class="kpi-sub">Equilibrium checking SOP — new</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Shade Families Studied</div>
+      <div class="kpi-value red">4</div>
+      <div class="kpi-sub">Grey, Blue, Turquoise, Sand</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Dye Migration Tests</div>
+      <div class="kpi-value purple">2</div>
+      <div class="kpi-sub">Error vs no-error recipe comparison</div>
+    </div>
+  </div>
+
+  <div class="grid-13">
+    <div class="panel">
+      <div class="panel-title">Shade Variation Data — Dec 2023 to Apr 2024 <span>By shade family frequency</span></div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="shadeChart" role="img" aria-label="Bar chart of shade variation occurrences by shade family">Grey shade has highest variation occurrences.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Problem ABC Classification</div>
+      <div class="abc-grid" style="grid-template-columns:1fr; gap:8px;">
+        <div class="abc-card" style="background:#0d2a0d; border:1px solid #22c55e;">
+          <div class="abc-letter" style="color:#22c55e;">A</div>
+          <div class="abc-title" style="color:#22c55e;">Self-Solvable</div>
+          <div class="abc-body" style="color:#a8c4dc;">Equilibrium of dyeing machines — solved independently by team analysis</div>
+        </div>
+        <div class="abc-card" style="background:#0d1a2a; border:1px solid #5ab5f7;">
+          <div class="abc-letter" style="color:#5ab5f7;">B</div>
+          <div class="abc-title" style="color:#5ab5f7;">Cross-Department</div>
+          <div class="abc-body" style="color:#a8c4dc;">Roller hardness + Bulk variations — requires maintenance & production collaboration</div>
+        </div>
+        <div class="abc-card" style="background:#2a1800; border:1px solid #d4840a;">
+          <div class="abc-letter" style="color:#d4840a;">C</div>
+          <div class="abc-title" style="color:#d4840a;">Management Level</div>
+          <div class="abc-body" style="color:#a8c4dc;">Migration study on dyes — requires lab resources and management approval</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <div class="panel-title">Process House Flow Chart <span>QA checkpoints and reprocess loops</span></div>
+    <div class="flow">
+      <div class="flow-step gold">Greigh Folding</div><div class="flow-arrow">→</div>
+      <div class="flow-step">Soft Flow</div><div class="flow-arrow">→</div>
+      <div class="flow-step gold">QA Check</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step prob">Quality Check FAIL → Reprocess</div>
+      <div style="width:100%; height:8px;"></div>
+      <div class="flow-step">PTR</div><div class="flow-arrow">→</div>
+      <div class="flow-step gold">QA Check</div><div class="flow-arrow">→</div>
+      <div class="flow-step">Dyeing</div><div class="flow-arrow">→</div>
+      <div class="flow-step gold">QA Check</div><div class="flow-arrow">→</div>
+      <div class="flow-step">Finishing</div><div class="flow-arrow">→</div>
+      <div class="flow-step">Shearing</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step pass">PASS → CSP → END</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step prob">QA FAIL → Reprocess</div>
+    </div>
+    <div style="margin-top:10px;" class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#d4840a;"></div>QA checkpoint</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div>Failure / reprocess</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Pass / end</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-title">Root Cause Distribution</div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="causeChart" role="img" aria-label="Doughnut chart of root causes of shade variation">4 root causes identified across Man, Machine, Method, Material.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Problem Voting Scores <span>4-member team, 10/10 max</span></div>
+      <div style="margin-top:4px;">
+        <div class="bar-row">
+          <div class="bar-label">Roller Hardness</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:100%; background:#d4840a;"></div></div>
+          <div class="bar-val">10/10</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Bulk Variations</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:100%; background:#d4840a;"></div></div>
+          <div class="bar-val">10/10</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Dye Migration</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:100%; background:#5ab5f7;"></div></div>
+          <div class="bar-val">10/10</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Equilibrium</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:80%; background:#22c55e;"></div></div>
+          <div class="bar-val">8/10</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Fishbone — Cause Categories</div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="fishChart" role="img" aria-label="Bar chart of defect causes by category: Man, Machine, Method, Material">Defect causes across 4 Ishikawa categories.</canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SHADE VARIATION ═══ -->
+<div id="tab-shade" class="main hidden">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card red">
+      <div class="kpi-label">Highest Shade Variation</div>
+      <div class="kpi-value red">Grey</div>
+      <div class="kpi-sub">Grey eclipse, Soothing, Metal, Deep Grey</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Buyers Affected</div>
+      <div class="kpi-value gold">5+</div>
+      <div class="kpi-sub">Target, Walmart, Sam's, IKEA, Amazon</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Study Period</div>
+      <div class="kpi-value blue">5 mo</div>
+      <div class="kpi-sub">Dec 2023 – Apr 2024</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Primary Finding</div>
+      <div class="kpi-value purple">Dye</div>
+      <div class="kpi-sub">Dye formulation = main driver</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Shade Variation Frequency — Top Families</div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="shadeFreqChart" role="img" aria-label="Horizontal bar chart showing grey shade families have highest variation frequency">Grey shade families dominate variation occurrences.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Grey Family Shade — Buyer Mapping</div>
+      <table class="data-table">
+        <thead><tr><th>Shade Name</th><th>Key Buyers</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>Grey Eclipse</td><td>TARGET</td><td><span class="ph-pill ph-bad">Critical</span></td></tr>
+          <tr><td>Grey (Standard)</td><td>Sam's, IBD, IKEA, Walmart, Amazon</td><td><span class="ph-pill ph-bad">Critical</span></td></tr>
+          <tr><td>Soothing Grey</td><td>Walmart</td><td><span class="ph-pill ph-warn">High</span></td></tr>
+          <tr><td>Metal Grey</td><td>Target</td><td><span class="ph-pill ph-warn">High</span></td></tr>
+          <tr><td>C-Grey</td><td>Target</td><td><span class="ph-pill ph-warn">High</span></td></tr>
+          <tr><td>Deep Grey</td><td>Target</td><td><span class="ph-pill ph-ok">Monitor</span></td></tr>
+        </tbody>
+      </table>
+      <div class="finding-card" style="margin-top:14px;">
+        <div class="finding-title" style="color:#ef4444;">Key Finding — Grey Shade Problem</div>
+        Grey shade family was identified as the primary cause of shade variation across Dec 2023 – Apr 2024. Dye molecules in grey recipes (3-dye combinations: Yellow S3R + Ruby S3B + Deep Blue) showed highest incompatibility and migration rates, directly impacting RFT.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Fishbone Diagram — Cause & Effect Analysis for Shade Variation</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#5ab5f7; margin-bottom:8px; text-transform:uppercase;">MAN</div>
+        <div class="finding-card" style="border-color:#5ab5f7;">
+          <div class="finding-title" style="color:#5ab5f7;">Human Factors</div>
+          Unskilled workers & new joiners • Poor operating practices • Lack of training & negligence • Improper CLRI standards • Poor towel feeding • Lack of product handling
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#ef4444; margin-bottom:8px; text-transform:uppercase;">MACHINE</div>
+        <div class="finding-card" style="border-color:#ef4444;">
+          <div class="finding-title" style="color:#ef4444;">Machine Factors</div>
+          Uneven tension & pressure distribution • Improper maintenance causing inconsistent dye fixation • Inadequate machine cleaning → residual chemicals/dyes causing unintended shade variations • Uneven pressure distribution on fabric
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#a78bfa; margin-bottom:8px; text-transform:uppercase;">METHOD</div>
+        <div class="finding-card" style="border-color:#a78bfa;">
+          <div class="finding-title" style="color:#a78bfa;">Method Factors</div>
+          Variation in dwell time during dyeing • Inconsistent colour development across fabric • Uneven fabric preparation affecting dye uptake • Inconsistent pre-treatment processes
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#22c55e; margin-bottom:8px; text-transform:uppercase;">MATERIAL</div>
+        <div class="finding-card" style="border-color:#22c55e;">
+          <div class="finding-title" style="color:#22c55e;">Material Factors</div>
+          Variability in fabric moisture content • Yarn-to-yarn variability → difference in dye fixation and shade • Fabric surface treatments affecting dye penetration and adherence • Inconsistent dye uptake and shade
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EQUILIBRIUM ═══ -->
+<div id="tab-equilibrium" class="main hidden">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card gold">
+      <div class="kpi-label">Service Tank pH (SOP)</div>
+      <div class="kpi-value gold">5–5.5</div>
+      <div class="kpi-sub">Standard parameter</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">First Drain pH (SOP)</div>
+      <div class="kpi-value blue">11–12</div>
+      <div class="kpi-sub">Alkaline fixation range</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Second Drain pH (SOP)</div>
+      <div class="kpi-value blue">11–12</div>
+      <div class="kpi-sub">Consistent with first drain</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">SOP Created</div>
+      <div class="kpi-value green">NEW</div>
+      <div class="kpi-sub">No prior SOP existed — created by Amritpal</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Equilibrium Checking — Real Batch Data <span>9 batches monitored</span></div>
+      <table class="data-table">
+        <thead><tr><th>Customer</th><th>Shade</th><th>Route</th><th>Service pH</th><th>1st Drain</th><th>2nd Drain</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Target</td><td>Balance Blue</td><td>CPB-2</td><td><span class="ph-pill ph-warn">6.52</span></td><td><span class="ph-pill ph-warn">12.47</span></td><td><span class="ph-pill ph-warn">12.51</span></td><td><span class="ph-pill ph-warn">Over</span></td></tr>
+          <tr><td>Target</td><td>Balance Blue</td><td>CPB-1</td><td><span class="ph-pill ph-warn">6.50</span></td><td><span class="ph-pill ph-warn">12.50</span></td><td><span class="ph-pill ph-ok">12.21</span></td><td><span class="ph-pill ph-warn">Over</span></td></tr>
+          <tr><td>IBD Feather</td><td>Charcoal</td><td>CPB-2</td><td><span class="ph-pill ph-warn">6.55</span></td><td><span class="ph-pill ph-warn">12.41</span></td><td><span class="ph-pill ph-warn">12.55</span></td><td><span class="ph-pill ph-warn">Over</span></td></tr>
+          <tr><td>Walmart</td><td>Dry Sand</td><td>CPB-1</td><td><span class="ph-pill ph-bad">6.69</span></td><td><span class="ph-pill ph-ok">12.49</span></td><td><span class="ph-pill ph-warn">12.52</span></td><td><span class="ph-pill ph-bad">High</span></td></tr>
+          <tr><td>Target</td><td>Neutral Turquoise</td><td>CPB-2</td><td><span class="ph-pill ph-ok">6.45</span></td><td><span class="ph-pill ph-ok">12.45</span></td><td><span class="ph-pill ph-warn">12.56</span></td><td><span class="ph-pill ph-ok">OK</span></td></tr>
+          <tr><td>Target</td><td>C-Grey</td><td>CPB-2</td><td><span class="ph-pill ph-warn">6.55</span></td><td><span class="ph-pill ph-ok">12.49</span></td><td><span class="ph-pill ph-warn">12.55</span></td><td><span class="ph-pill ph-warn">Over</span></td></tr>
+          <tr><td>Target</td><td>Silver Mink</td><td>CPB-1</td><td><span class="ph-pill ph-warn">6.65</span></td><td><span class="ph-pill ph-warn">12.60</span></td><td><span class="ph-pill ph-warn">12.61</span></td><td><span class="ph-pill ph-bad">High</span></td></tr>
+          <tr><td>Walmart</td><td>Soothing Grey</td><td>CPB-2</td><td><span class="ph-pill ph-warn">6.55</span></td><td><span class="ph-pill ph-ok">12.45</span></td><td><span class="ph-pill ph-warn">12.56</span></td><td><span class="ph-pill ph-warn">Over</span></td></tr>
+          <tr><td>Target</td><td>Deep Grey</td><td>CPB-2</td><td><span class="ph-pill ph-ok">6.40</span></td><td><span class="ph-pill ph-ok">12.48</span></td><td><span class="ph-pill ph-warn">12.56</span></td><td><span class="ph-pill ph-ok">OK</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">pH Deviation from SOP Range <span>Service tank target: 5.0–5.5</span></div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="eqChart" role="img" aria-label="Line chart showing service tank pH readings vs SOP standard 5 to 5.5">All 9 service tank pH readings exceed the SOP target range of 5.0–5.5.</canvas>
+      </div>
+      <div class="finding-card" style="margin-top:12px; border-color:#ef4444;">
+        <div class="finding-title" style="color:#ef4444;">Critical Finding</div>
+        ALL 9 monitored batches showed service tank pH ABOVE the SOP limit of 5.5 (range: 6.40–6.69). This means salt/soda equilibrium was not being maintained correctly — directly causing shade deflection. Result: SOP must be revised and enforced.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HARDNESS ═══ -->
+<div id="tab-hardness" class="main hidden">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card gold">
+      <div class="kpi-label">Standard Hardness</div>
+      <div class="kpi-value gold">65±5</div>
+      <div class="kpi-sub">Shore hardness units</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Acceptable Range</div>
+      <div class="kpi-value green">60–70</div>
+      <div class="kpi-sub">CPB-1 & CPB-2 rollers</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Weeks Monitored</div>
+      <div class="kpi-value red">8</div>
+      <div class="kpi-sub">Feb 12 – Mar 26, 2024</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Machines Tested</div>
+      <div class="kpi-value blue">2</div>
+      <div class="kpi-sub">CPB-1 & CPB-2 bulk machines</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Roller Hardness Trend — CPB-1 vs CPB-2 <span>Front & back rollers, Feb–Mar 2024</span></div>
+      <div class="chart-wrap" style="height:250px;">
+        <canvas id="hardnessChart" role="img" aria-label="Line chart showing roller hardness weekly readings for CPB-1 and CPB-2">Roller hardness monitored weekly showing mostly within standard range of 60-70.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Weekly Hardness Readings — Raw Data</div>
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Roller</th><th>CPB-1 L/M/R</th><th>CPB-2 L/M/R</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>12/02/2024</td><td>Front</td><td>65 / 64 / 65</td><td>68 / 58 / 58</td><td><span class="ph-pill ph-warn">CPB-2 Low</span></td></tr>
+          <tr><td>12/02/2024</td><td>Back</td><td>66 / 64 / 66</td><td>66 / 66 / 66</td><td><span class="ph-pill ph-ok">OK</span></td></tr>
+          <tr><td>19/02/2024</td><td>Front</td><td>65 / 65 / 65</td><td>56 / 65 / 66</td><td><span class="ph-pill ph-bad">CPB-2 Low</span></td></tr>
+          <tr><td>26/02/2024</td><td>Front</td><td>66 / 66 / 67</td><td>67 / 66 / 57</td><td><span class="ph-pill ph-warn">CPB-2 R</span></td></tr>
+          <tr><td>05/03/2024</td><td>Front</td><td>65 / 55 / 66</td><td>67 / 65 / 67</td><td><span class="ph-pill ph-warn">CPB-1 M</span></td></tr>
+          <tr><td>12/03/2024</td><td>Front</td><td>66 / 66 / 66</td><td>59 / 63 / 59</td><td><span class="ph-pill ph-bad">CPB-2 Low</span></td></tr>
+          <tr><td>19/03/2024</td><td>Front</td><td>67 / 66 / 66</td><td>67 / 66 / 69</td><td><span class="ph-pill ph-ok">OK</span></td></tr>
+          <tr><td>26/03/2024</td><td>Front</td><td>64 / 65 / 64</td><td>65 / 64 / 65</td><td><span class="ph-pill ph-ok">OK</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="finding-card">
+    <div class="finding-title" style="color:#d4840a;">Why Roller Hardness Matters — Key Insight</div>
+    Squeezing of fabric depends directly on roller hardness. If hardness deviates below 60 or above 70 Shore units, the squeeze ratio changes → wet pick-up % varies → dye concentration absorbed per unit fabric changes → shade variation occurs in finished goods. CPB-2 showed the most out-of-range readings (3 occurrences below 60), making it the priority machine for maintenance scheduling.
+  </div>
+</div>
+
+<!-- ═══ DYE MIGRATION ═══ -->
+<div id="tab-migration" class="main hidden">
+  <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);">
+    <div class="kpi-card red">
+      <div class="kpi-label">Problem Recipe</div>
+      <div class="kpi-value red" style="font-size:18px;">Grey Eclipse</div>
+      <div class="kpi-sub">High migration — 3-dye incompatibility</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Control Recipe</div>
+      <div class="kpi-value green" style="font-size:18px;">Amber Sun</div>
+      <div class="kpi-sub">No error — low migration rate</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Test Method</div>
+      <div class="kpi-value gold" style="font-size:18px;">Filter</div>
+      <div class="kpi-sub">Paper chromatography — 7-step protocol</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Dye Migration Comparison — Error vs No Error Recipe</div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="migChart" role="img" aria-label="Grouped bar chart comparing dye concentrations in error recipe Grey Eclipse vs no error recipe Amber Sun">Dye concentration comparison between error and no-error recipes.</canvas>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;">
+        <div style="background:#2a0d0d; border-radius:5px; padding:12px; border:1px solid #ef4444;">
+          <div style="font-size:11px; font-weight:600; color:#ef4444; margin-bottom:6px;">Grey Eclipse (WITH ERROR)</div>
+          <div style="font-size:11px; color:#c8d8e8; line-height:1.7;">
+            Nova Yellow S3R: 4.750g → 0.500<br>
+            Nova Ruby S3B: 3.250g → 0.500<br>
+            Avi. Deep Blue: 5.550g → 0.500
+          </div>
+        </div>
+        <div style="background:#0d2a0d; border-radius:5px; padding:12px; border:1px solid #22c55e;">
+          <div style="font-size:11px; font-weight:600; color:#22c55e; margin-bottom:6px;">Amber Sun (NO ERROR)</div>
+          <div style="font-size:11px; color:#c8d8e8; line-height:1.7;">
+            Nova Yellow S3R: 4.700g → 0.500<br>
+            Nova Red EC3B: 0.107g → 0.500<br>
+            Nova Blue CD: 0.159g → 0.500
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">7-Step Experiment Protocol</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">1</div>
+          <div>20ml water in small beaker</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">2</div>
+          <div>0.5gm dye dissolved in water</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">3</div>
+          <div>Set filter paper or plain fabric as medium</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">4</div>
+          <div>Mark centre point of filter paper precisely</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">5</div>
+          <div>Pour dye drop at centre of paper</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#a8c4dc;">
+          <div style="min-width:24px; height:24px; background:#2a1800; border:1px solid #d4840a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#d4840a; flex-shrink:0;">6</div>
+          <div>Add water drop when previous dye absorbed & spread properly</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start; font-size:12px; color:#22c55e;">
+          <div style="min-width:24px; height:24px; background:#0d2a0d; border:1px solid #22c55e; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#22c55e; flex-shrink:0;">7</div>
+          <div>When dye stops migrating, water migration also stops → measure ring diameter</div>
+        </div>
+      </div>
+      <div class="finding-card" style="margin-top:14px; border-color:#d4840a;">
+        <div class="finding-title" style="color:#d4840a;">Result</div>
+        Grey Eclipse dyes (High concentration: 3.25–5.55g per 0.5L) showed significantly larger migration rings than Amber Sun dyes (Low concentration: 0.107–0.159g). High-concentration dyes = incompatible migration rates = shade ring formation in fabric.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LEAD CLOTH ═══ -->
+<div id="tab-leadcloth" class="main hidden">
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card red">
+      <div class="kpi-label">Primary Root Cause</div>
+      <div class="kpi-value red" style="font-size:18px;">Lead Cloth</div>
+      <div class="kpi-sub">Wrong lead cloth = 15–20 slits affected</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Batches Monitored</div>
+      <div class="kpi-value gold">8</div>
+      <div class="kpi-sub">Mar 5 – Mar 25, 2024</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Solution Found</div>
+      <div class="kpi-value green" style="font-size:18px;">Match</div>
+      <div class="kpi-sub">Lead cloth GSM must equal batch GSM</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Routes Tested</div>
+      <div class="kpi-value blue">2</div>
+      <div class="kpi-sub">CPB & Pad Steam</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Lead Cloth Pick-Up % vs Batch Pick-Up % <span>Real readings Mar 2024</span></div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="leadChart" role="img" aria-label="Grouped bar chart comparing lead cloth pick-up percentage vs batch pick-up percentage for 8 dates">Lead cloth vs batch wet pick-up comparison showing significant variation in Pad Steam batches.</canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Raw Readings — Lead Cloth Study</div>
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Route</th><th>LC Wet</th><th>LC Dry</th><th>LC Pick%</th><th>Batch Pick%</th><th>Match</th></tr></thead>
+        <tbody>
+          <tr><td>05/03</td><td>CPB</td><td>55.8</td><td>44.8</td><td>24.5</td><td>100</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+          <tr><td>05/03</td><td>Pad Steam</td><td>104.7</td><td>59.1</td><td>75</td><td>86.3</td><td><span class="ph-pill ph-warn">Close</span></td></tr>
+          <tr><td>10/03</td><td>CPB</td><td>66.8</td><td>54.8</td><td>21.8</td><td>80.4</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+          <tr><td>12/03</td><td>Pad Steam</td><td>98.4</td><td>44.9</td><td>100</td><td>89.1</td><td><span class="ph-pill ph-warn">Close</span></td></tr>
+          <tr><td>13/03</td><td>CPB</td><td>59.6</td><td>49.6</td><td>20.2</td><td>96.2</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+          <tr><td>19/03</td><td>CPB</td><td>57.3</td><td>46.8</td><td>22.4</td><td>100</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+          <tr><td>23/03</td><td>CPB</td><td>64.3</td><td>51.4</td><td>25.0</td><td>100</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+          <tr><td>25/03</td><td>CPB</td><td>61.1</td><td>49.3</td><td>23.9</td><td>92</td><td><span class="ph-pill ph-bad">No</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="finding-card" style="border-color:#ef4444;">
+    <div class="finding-title" style="color:#ef4444;">Conclusion — Lead Cloth is the Primary Driver of Shade Variation</div>
+    CPB route shows lead cloth pick-up % averaging 21–25% while batch pick-up % reaches 80–100%. This massive mismatch means the lead cloth does NOT represent the actual dyebath equilibrium — causing the wrong shade to be set before the bulk fabric enters the machine. Solution implemented: Lead cloth must be made from the same batch type and GSM as the production batch. This directly eliminates 15–20 slits of colour variation per batch.
+  </div>
+</div>
+
+<div class="footer">
+  <span>Amritpal Singh &nbsp;|&nbsp; Salary Code: 41014949 &nbsp;|&nbsp; Zero Quality Project — Finished Goods &nbsp;|&nbsp; Supervisor: Mr. Naveen Kumar, Trident Group, Budni</span>
+  <span>16 Jan 2024 – 16 Jul 2024 &nbsp;|&nbsp; La Trobe University MBusA Portfolio Project</span>
+</div>
+
+<script>
+function showTab(name, el) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+const gc = 'rgba(30,58,80,0.5)';
+const tc = '#6b8aa8';
+
+// Shade variation bar
+new Chart(document.getElementById('shadeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Soothing Grey','Grey Eclipse','Deep Grey','C-Grey','Silver Mink','Metal Grey','Navy Blue','Balance Blue','Charcoal','Turquoise','Dry Sand','Others'],
+    datasets: [{ label: 'Occurrences', data: [30,27,22,18,16,14,10,9,8,6,5,20], backgroundColor: (ctx) => ctx.dataIndex < 6 ? '#ef4444' : '#d4840a', borderRadius: 3 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, font:{size:9}, maxRotation: 45 } },
+      y: { grid: { color: gc }, ticks: { color: tc, font:{size:10} } }
+    }
+  }
+});
+
+// Cause donut
+new Chart(document.getElementById('causeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Equilibrium (A-type)','Roller Hardness (B-type)','Bulk Variation (B-type)','Dye Migration (C-type)'],
+    datasets: [{ data: [25,30,25,20], backgroundColor: ['#22c55e','#d4840a','#5ab5f7','#ef4444'], borderWidth: 0 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
+});
+
+// Fishbone categories
+new Chart(document.getElementById('fishChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Man','Machine','Method','Material'],
+    datasets: [{ label: 'Causes identified', data: [6, 5, 4, 4], backgroundColor: ['#5ab5f7','#ef4444','#a78bfa','#22c55e'], borderRadius: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc } },
+      y: { grid: { color: gc }, ticks: { color: tc } }
+    }
+  }
+});
+
+// Shade freq horizontal
+new Chart(document.getElementById('shadeFreqChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Grey Eclipse','Soothing Grey','Metal Grey','C-Grey','Deep Grey','Silver Mink'],
+    datasets: [{ label: 'Variation count', data: [27,30,14,18,22,16], backgroundColor: '#ef4444', borderRadius: 3 }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, font:{size:10} } },
+      y: { grid: { color: 'transparent' }, ticks: { color: tc, font:{size:11} } }
+    }
+  }
+});
+
+// Equilibrium pH chart
+new Chart(document.getElementById('eqChart'), {
+  type: 'line',
+  data: {
+    labels: ['Bal.Blue(2)','Bal.Blue(1)','Charcoal','Dry Sand','N.Turquoise','C-Grey','Silver Mink','Sth.Grey','Deep Grey'],
+    datasets: [
+      { label: 'Actual pH', data: [6.52,6.50,6.55,6.69,6.45,6.55,6.65,6.55,6.40], borderColor: '#ef4444', borderWidth: 2, pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'SOP Max (5.5)', data: [5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5], borderColor: '#22c55e', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, fill: false },
+      { label: 'SOP Min (5.0)', data: [5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0,5.0], borderColor: '#d4840a', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, fill: false }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, font:{size:9}, maxRotation:35 } },
+      y: { min: 4.5, max: 7.2, grid: { color: gc }, ticks: { color: tc, font:{size:10} } }
+    }
+  }
+});
+
+// Hardness trend
+new Chart(document.getElementById('hardnessChart'), {
+  type: 'line',
+  data: {
+    labels: ['12/02 Front','12/02 Back','19/02 Front','26/02 Front','05/03 Front','12/03 Front','19/03 Front','26/03 Front'],
+    datasets: [
+      { label: 'CPB-1 Avg', data: [64.7,65.3,65,66.3,62,66,66.3,64.3], borderColor: '#d4840a', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false },
+      { label: 'CPB-2 Avg', data: [61.3,66,62.3,63.3,66.3,60.3,67.3,64.7], borderColor: '#5ab5f7', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false },
+      { label: 'Upper limit (70)', data: [70,70,70,70,70,70,70,70], borderColor: '#ef4444', borderDash:[4,4], borderWidth:1, pointRadius:0, fill: false },
+      { label: 'Lower limit (60)', data: [60,60,60,60,60,60,60,60], borderColor: '#ef4444', borderDash:[4,4], borderWidth:1, pointRadius:0, fill: false }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, font:{size:9}, maxRotation:35 } },
+      y: { min: 54, max: 74, grid: { color: gc }, ticks: { color: tc, font:{size:10} } }
+    }
+  }
+});
+
+// Dye migration comparison
+new Chart(document.getElementById('migChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Yellow dye','Red/Ruby dye','Blue dye'],
+    datasets: [
+      { label: 'Grey Eclipse (error)', data: [4.750,3.250,5.550], backgroundColor: '#ef4444', borderRadius: 3 },
+      { label: 'Amber Sun (no error)', data: [4.700,0.107,0.159], backgroundColor: '#22c55e', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc } },
+      y: { grid: { color: gc }, ticks: { color: tc, callback: v => v + 'g' }, title: { display: true, text: 'Dye concentration (g)', color: tc, font:{size:10} } }
+    }
+  }
+});
+
+// Lead cloth pick-up
+new Chart(document.getElementById('leadChart'), {
+  type: 'bar',
+  data: {
+    labels: ['05/03 CPB','05/03 PS','10/03 CPB','12/03 PS','13/03 CPB','19/03 CPB','23/03 CPB','25/03 CPB'],
+    datasets: [
+      { label: 'Lead cloth pick-up %', data: [24.5,75,21.8,100,20.2,22.4,25.0,23.9], backgroundColor: '#d4840a', borderRadius: 3 },
+      { label: 'Batch pick-up %', data: [100,86.3,80.4,89.1,96.2,100,100,92], backgroundColor: '#5ab5f7', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, font:{size:9}, maxRotation:35 } },
+      y: { grid: { color: gc }, ticks: { color: tc, callback: v => v + '%' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
